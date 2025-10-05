@@ -1,38 +1,97 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-// Tipagem para receber parâmetros da navegação (importamos do AppNavigator)
-import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, StatusBar } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 
-// Define a tipagem específica para a rota CoinDetails
-type CoinDetailsRouteProp = RouteProp<RootStackParamList, 'CoinDetails'>;
+// Importa os itens refatorados
+import { styles } from './styles/CoinListScreenStyles';
+import { useCoinList } from '../hooks/useCoinList';
 
-interface Props {
-  route: CoinDetailsRouteProp;
+// Importa os tipos e componentes
+import { Coin, CollectionStackParamList } from '../utils/types';
+import CoinListItem from '../components/CoinListItem';
+
+// Tipos de navegação e rota
+type CoinListNavigationProp = StackNavigationProp<CollectionStackParamList, 'CoinListScreen'>;
+type CoinListRouteProp = RouteProp<CollectionStackParamList, 'CoinListScreen'>;
+
+export default function CoinListScreen() {
+    const navigation = useNavigation<CoinListNavigationProp>();
+    const route = useRoute<CoinListRouteProp>();
+
+    // Pega o nome da coleção para exibir no cabeçalho. Usa um fallback seguro.
+    const { collectionName } = route.params || { collectionName: 'Coleção Desconhecida' };
+
+    // --- USO DO CUSTOM HOOK (Toda a lógica está aqui) ---
+    const { 
+        coins, 
+        loading, 
+        error, 
+        totalCoins, 
+        ownedCount, 
+        fetchCoins, 
+        toggleCoinStatus 
+    } = useCoinList();
+    // ---------------------------------------------------
+
+    const renderItem = ({ item }: { item: Coin }) => (
+        <CoinListItem 
+            coin={item} 
+            onPress={() => navigation.navigate('CoinDetails', { coinId: item.id })} 
+            onToggleStatus={() => toggleCoinStatus(item.id)}
+        />
+    );
+
+    // --- Renderização de Loading e Erro ---
+    if (loading) {
+        return (
+            <View style={[styles.container, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color="#00bcd4" />
+                <Text style={styles.loadingText}>Carregando moedas de {collectionName}...</Text>
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={[styles.container, styles.loadingContainer]}>
+                <Text style={styles.errorText}>ERRO:</Text>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity onPress={fetchCoins}>
+                    {/* CORREÇÃO DO ERRO Text strings must be rendered within a <Text> component. */}
+                    <Text style={styles.subtitle}>Toque para Recarregar</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    // --- Renderização Principal ---
+    return (
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#121212" />
+            <View style={styles.header}>
+                {/* Botão Voltar/Voltar para Coleção */}
+                <TouchableOpacity 
+                    style={styles.headerBack} 
+                    onPress={() => navigation.goBack()}
+                >
+                    <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+
+                <Text style={styles.title}>{collectionName}</Text>
+                <Text style={styles.subtitle}>Progresso: ({ownedCount}/{totalCoins})</Text>
+            </View>
+
+            <FlatList
+                data={coins}
+                renderItem={renderItem}
+                keyExtractor={(item) => item.id}
+                numColumns={3}
+                columnWrapperStyle={styles.row}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+            />
+        </View>
+    );
 }
-
-export default function CoinDetailsScreen({ route }: Props) {
-  // Você pode descomentar esta linha no futuro para ver o ID da moeda
-  // const { coinId } = route.params;
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Tela de Detalhes da Moeda</Text>
-      <Text style={styles.text}>Próxima Etapa: Implementação do Detalhe</Text> 
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#121212',
-  },
-  text: {
-    color: '#fff',
-    fontSize: 18,
-    marginBottom: 8,
-  },
-});
