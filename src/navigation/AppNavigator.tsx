@@ -1,14 +1,12 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// 1. Importe as telas do MVP
 import HomeScreen from '../screens/HomeScreen';
-import CoinDetailsScreen from '../screens/CoinDetailsScreen';// Vamos criar essa tela em breve
+import CoinDetailsScreen from '../screens/CoinDetailsScreen';
 
-// 2. Crie a interface para tipagem (melhor prática com TypeScript)
 export type RootStackParamList = {
-  Home: undefined; // Não precisa de parâmetros iniciais
-  CoinDetails: { coinId: string }; // Precisará do ID da moeda
+  Home: undefined;
+  CoinDetails: { coinId: string }; // ID para a tela de detalhes
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -19,18 +17,18 @@ export default function AppNavigator() {
       initialRouteName="Home"
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#121212', // Fundo do Header (dark mode)
+          backgroundColor: '#121212',
         },
-        headerTintColor: '#fff', // Cor do texto/ícones do Header
+        headerTintColor: '#fff',
         contentStyle: {
-          backgroundColor: '#121212', // Fundo das telas (fallback)
+          backgroundColor: '#121212',
         },
       }}
     >
       <Stack.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: 'Minha Coleção' }} // Título do MVP
+        options={{ title: 'Minha Coleção' }}
       />
       <Stack.Screen
         name="CoinDetails"

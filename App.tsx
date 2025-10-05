@@ -1,16 +1,16 @@
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { NavigationContainer } from '@react-navigation/native'; // NOVO!
+import { NavigationContainer } from '@react-navigation/native';
 
-import AppNavigator from "./src/navigation/AppNavigator"; // NOVO!
+import AppNavigator from "./src/navigation/AppNavigator";
 
 export default function App() {
   return (
-    <NavigationContainer> // TUDO DEVE ESTAR ENVOLVIDO
+    <NavigationContainer>
       <SafeAreaView style={styles.container}>
         <StatusBar style="light" />
-        <AppNavigator /> // CHAME O NAVEGADOR AQUI
+        <AppNavigator />
       </SafeAreaView>
     </NavigationContainer>
   );
