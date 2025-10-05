@@ -1,178 +1,97 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Image, TouchableOpacity } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import React from 'react';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, StatusBar } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 
-import axios from 'axios'; 
-import { Coin } from '../utils/data';
+// Importa os itens refatorados
+import { styles } from './styles/CoinListScreenStyles';
+import { useCoinList } from '../hooks/useCoinList';
 
-// REMOVIDO: A importação de tipo AxiosResponse (para evitar o erro 2694)
+// Importa os tipos e componentes
+import { Coin, CollectionStackParamList } from '../utils/types';
+import CoinListItem from '../components/CoinListItem';
 
-// URL base da API hospedada no Render
-const BASE_API_URL = 'https://appcoin-api.onrender.com/api/v1/coins';
+// Tipos de navegação e rota
+type CoinListNavigationProp = StackNavigationProp<CollectionStackParamList, 'CoinListScreen'>;
+type CoinListRouteProp = RouteProp<CollectionStackParamList, 'CoinListScreen'>;
 
-// Define os parâmetros esperados da rota
-type CoinDetailsRouteProp = RouteProp<{ CoinDetails: { coinId: string } }, 'CoinDetails'>;
+export default function CoinListScreen() {
+    const navigation = useNavigation<CoinListNavigationProp>();
+    const route = useRoute<CoinListRouteProp>();
 
-export default function CoinDetailsScreen() {
-  const route = useRoute<CoinDetailsRouteProp>();
-  const { coinId } = route.params;
+    // Pega o nome da coleção para exibir no cabeçalho. Usa um fallback seguro.
+    const { collectionName } = route.params || { collectionName: 'Coleção Desconhecida' };
 
-  const [coin, setCoin] = useState<Coin | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    // --- USO DO CUSTOM HOOK (Toda a lógica está aqui) ---
+    const { 
+        coins, 
+        loading, 
+        error, 
+        totalCoins, 
+        ownedCount, 
+        fetchCoins, 
+        toggleCoinStatus 
+    } = useCoinList();
+    // ---------------------------------------------------
 
-  const fetchCoinDetails = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Usamos axios.get<T>() para inferir o tipo, esperando um objeto Coin
-      const response = await axios.get<Coin>(`${BASE_API_URL}/${coinId}`);
-      
-      // response.data é do tipo Coin, sem a necessidade de mapeamento complexo
-      const fetchedCoin: Coin = {
-        id: String(response.data.id), 
-        name: response.data.name,
-        theme: response.data.theme,
-        image_url: response.data.image_url,
-        hasCoin: false, // Status inicial/padrão
-      };
+    const renderItem = ({ item }: { item: Coin }) => (
+        <CoinListItem 
+            coin={item} 
+            onPress={() => navigation.navigate('CoinDetails', { coinId: item.id })} 
+            onToggleStatus={() => toggleCoinStatus(item.id)}
+        />
+    );
 
-      setCoin(fetchedCoin);
-    } catch (e) {
-      console.error("Erro ao carregar detalhes:", e);
-      setError("Falha ao conectar com a API ou moeda não encontrada.");
-      setCoin(null);
-    } finally {
-      setLoading(false);
+    // --- Renderização de Loading e Erro ---
+    if (loading) {
+        return (
+            <View style={[styles.container, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color="#00bcd4" />
+                <Text style={styles.loadingText}>Carregando moedas de {collectionName}...</Text>
+            </View>
+        );
     }
-  }, [coinId]);
 
-  useEffect(() => {
-    fetchCoinDetails();
-  }, [fetchCoinDetails]);
-  
-  // ----------------------------------------------------
-  // Renderização condicional
-  // ----------------------------------------------------
-  
-  if (loading) {
+    if (error) {
+        return (
+            <View style={[styles.container, styles.loadingContainer]}>
+                <Text style={styles.errorText}>ERRO:</Text>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity onPress={fetchCoins}>
+                    {/* CORREÇÃO DO ERRO Text strings must be rendered within a <Text> component. */}
+                    <Text style={styles.subtitle}>Toque para Recarregar</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    // --- Renderização Principal ---
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#00bcd4" />
-        <Text style={styles.loadingText}>Carregando detalhes da moeda...</Text>
-      </View>
-    );
-  }
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#121212" />
+            <View style={styles.header}>
+                {/* Botão Voltar/Voltar para Coleção */}
+                <TouchableOpacity 
+                    style={styles.headerBack} 
+                    onPress={() => navigation.goBack()}
+                >
+                    <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
 
-  if (error || !coin) {
-    return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <Text style={styles.errorText}>ERRO: Detalhes da Moeda</Text>
-        <Text style={styles.errorText}>{error || "Moeda não encontrada."}</Text>
-        <Text style={styles.subtitle} onPress={fetchCoinDetails}>Toque para Recarregar</Text>
-      </View>
-    );
-  }
+                <Text style={styles.title}>{collectionName}</Text>
+                <Text style={styles.subtitle}>Progresso: ({ownedCount}/{totalCoins})</Text>
+            </View>
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{coin.name}</Text>
-      <Text style={styles.subtitle}>Tema: {coin.theme}</Text>
-      
-      <Image 
-        source={{ uri: coin.image_url }} 
-        style={styles.image} 
-        resizeMode="contain" 
-      />
-      
-      <View style={styles.statusContainer}>
-        <Text style={styles.statusText}>
-          Status de Coleção: {coin.hasCoin ? 'TENHO' : 'FALTA'}
-        </Text>
-        {/* Este botão será expandido na fase 2 para atualizar o MongoDB */}
-        <TouchableOpacity style={styles.toggleButton}>
-             <Text style={styles.toggleButtonText}>
-                {coin.hasCoin ? 'Marcar como FALTA' : 'Marcar como TENHO'}
-             </Text>
-        </TouchableOpacity>
-      </View>
-      
-      {/* Adicione aqui mais detalhes se sua API retornar, como descrição, ano, etc. */}
-      
-    </ScrollView>
-  );
+            <FlatList
+                data={coins}
+                renderItem={renderItem}
+                keyExtractor={(item) => item.id}
+                numColumns={3}
+                columnWrapperStyle={styles.row}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+            />
+        </View>
+    );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-  },
-  content: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  loadingContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-  },
-  loadingText: {
-    color: '#aaa',
-    marginTop: 10,
-    fontSize: 16,
-  },
-  errorText: {
-    color: '#FF5733',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#00bcd4',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  image: {
-    width: '100%',
-    height: 300,
-    borderRadius: 10,
-    marginBottom: 30,
-    backgroundColor: '#333',
-  },
-  statusContainer: {
-    backgroundColor: '#282828',
-    padding: 15,
-    borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
-  },
-  statusText: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 15,
-    fontWeight: 'bold',
-  },
-  toggleButton: {
-    backgroundColor: '#00bcd4',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    width: '80%',
-  },
-  toggleButtonText: {
-    color: '#121212',
-    fontWeight: 'bold',
-    fontSize: 16,
-    textAlign: 'center',
-  }
-});
